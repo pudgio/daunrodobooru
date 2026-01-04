@@ -3,6 +3,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from colorama import init, Fore, Style
+import concurrent.futures
 
 # search arguments
 def get_user_input():
@@ -51,7 +52,7 @@ def fetch_image_urls(search_phrase, num_images):
     return urls
 
 def download_images(urls, folder_path):
-    for idx, url in enumerate(urls):
+    def download_image(url, idx):
         try:
             image_name = url.split('/')[-1]
             file_name = os.path.join(folder_path, image_name)
@@ -59,6 +60,11 @@ def download_images(urls, folder_path):
             urllib.request.urlretrieve(url, file_name)
         except Exception as e:
             print('Failed to download %s: %s' % (url, e))
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(download_image, url, idx) for idx, url in enumerate(urls)]
+        for future in concurrent.futures.as_completed(futures):
+            future.result()
 
 def main():
     if not os.path.exists('images'):
